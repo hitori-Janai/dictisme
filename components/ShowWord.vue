@@ -67,10 +67,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { storage } from 'wxt/storage'
 import CheckBoxIcon from './CheckBoxIcon.vue'
 import FavBoxIcon from './FavBoxIcon.vue'
 import PlaySoundIcon from './PlaySoundIcon.vue'
+import { getDictsData, setDictsData, updateWordStatus } from '../utils/storage-utils'
 
 const word = ref('')
 const meaning = ref('')
@@ -82,29 +82,66 @@ let updateTimeout = null
 // 加载数据
 onMounted(async () => {
   try {
-    const dicts_word = await storage.getItem('local:dicts_word')
-    const dicts_meaning = await storage.getItem('local:dicts_meaning')
-    const dicts_image = await storage.getItem('local:dicts_image')
-    const dicts_status_check = await storage.getItem('local:dicts_status_check')
-    const dicts_status_fav = await storage.getItem('local:dicts_status_fav')
+    const dictsData = await getDictsData()
     
-    word.value = dicts_word || ''
-    meaning.value = dicts_meaning || ''
-    status_check.value = dicts_status_check || false
-    status_fav.value = dicts_status_fav || false
+    word.value = dictsData.dicts_word || ''
+    meaning.value = dictsData.dicts_meaning || ''
+    status_check.value = dictsData.dicts_status_check || false
+    status_fav.value = dictsData.dicts_status_fav || false
     
-    if (dicts_image) {
-      imageUrl.value = dicts_image
+    if (dictsData.dicts_image) {
+      imageUrl.value = dictsData.dicts_image
     }
+
+    // 监控数据
+    await storage.watch (
+      'local:dicts_meaning',
+      (newInstallDate, oldInstallDate) => {
+        meaning.value = newInstallDate
+      }
+    );
+
+    await storage.watch(
+      'local:dicts_image',
+      (newInstallDate, oldInstallDate) => {
+        imageUrl.value = newInstallDate
+      }
+    );
+
+    await storage.watch(
+      'local:dicts_status_check',
+      (newInstallDate, oldInstallDate) => {
+        status_check.value = newInstallDate
+      }
+    );
+
+    await storage.watch(
+      'local:dicts_status_fav',
+      (newInstallDate, oldInstallDate) => {
+        status_fav.value = newInstallDate
+      }
+    );
+
+
+
   } catch (error) {
     console.error('加载数据失败:', error)
   }
 })
 
-// 保存单词
-const saveWord = async () => {
+// 查询单词
+const findWord = async () => {
   try {
-    await storage.setItem('local:dicts_word', word.value)
+
+    await setDictsData({ dicts_word: word.value })
+    getWordFromDB(word.value).then(async result => {
+        console.log('getWordFromDB', result)
+        const empty = {dicts_meaning: '', dicts_image: '', dicts_status_check: false, dicts_status_fav: false, dicts_count: 0, dicts_create_time: '', dicts_update_time: ''};
+        await setDictsData(result == null ? empty : result)
+    }).catch(error => {
+        console.error('getWordFromDB', error)
+    })
+
     console.log('单词已保存', word.value)
   } catch (error) {
     console.error('保存单词失败:', error)
@@ -125,18 +162,7 @@ const playWordSound = () => {
 const toggleCheck = async () => {
   status_check.value = !status_check.value
   try {
-    await storage.setItem('local:dicts_status_check', status_check.value)
-    // 发送消息到background
-    chrome.runtime.sendMessage(
-      {
-        word: word.value,
-        status_check: status_check.value,
-        status_fav: status_fav.value
-      },
-      (response) => {
-        console.log("收到回复：", response);
-      }
-    );
+    await updateWordStatus(word.value, status_check.value, status_fav.value)
   } catch (error) {
     console.error('保存勾选状态失败:', error)
   }
@@ -146,18 +172,7 @@ const toggleCheck = async () => {
 const toggleFavorite = async () => {
   status_fav.value = !status_fav.value
   try {
-    await storage.setItem('local:dicts_status_fav', status_fav.value)
-    // 发送消息到background
-    chrome.runtime.sendMessage(
-      {
-        word: word.value,
-        status_check: status_check.value,
-        status_fav: status_fav.value
-      },
-      (response) => {
-        console.log("收到回复：", response);
-      }
-    );
+    await updateWordStatus(word.value, status_check.value, status_fav.value)
   } catch (error) {
     console.error('保存收藏状态失败:', error)
   }
@@ -174,14 +189,14 @@ const debounceUpdate = () => {
 const debounceUpdateWord = () => {
   clearTimeout(updateTimeout)
   updateTimeout = setTimeout(() => {
-    saveWord()
+    findWord()
   }, 1000) // 1秒后自动保存
 }
 
 // 保存词义
 const saveMeaning = async () => {
   try {
-    await storage.setItem('local:dicts_meaning', meaning.value)
+    await setDictsData({ dicts_meaning: meaning.value })
     console.log('词义已保存', meaning.value)
   } catch (error) {
     console.error('保存词义失败:', error)
@@ -189,10 +204,10 @@ const saveMeaning = async () => {
 }
 
 const testMeaning = async () => {
-    await storage.setItem('local:preference', "helloworld")
+    await setDictsData({ preference: "helloworld" })
     console.log('testMeaning', meaning.value)
-    const dicts_meaning = await storage.getItem('local:dicts_meaning')
-    console.log('dicts_meaning', dicts_meaning)
+    const dictsData = await getDictsData()
+    console.log('dictsData', dictsData)
 
     chrome.storage.local.set({ asdhjk: "huhuh" }).then(() => {
         console.log("Value is set")
@@ -210,7 +225,7 @@ const handleImageUpload = (event) => {
     imageUrl.value = imageData
     
     try {
-      await storage.setItem('local:dicts_image', imageData)
+      await setDictsData({ dicts_image: imageData })
       console.log('图片已保存')
     } catch (error) {
       console.error('保存图片失败:', error)
@@ -223,7 +238,7 @@ const handleImageUpload = (event) => {
 const removeImage = async () => {
   try {
     imageUrl.value = ''
-    await storage.removeItem('local:dicts_image')
+    await setDictsData({ dicts_image: null })
     console.log('图片已删除')
   } catch (error) {
     console.error('删除图片失败:', error)
