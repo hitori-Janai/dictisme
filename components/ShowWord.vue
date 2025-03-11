@@ -72,6 +72,17 @@ import FavBoxIcon from './FavBoxIcon.vue'
 import PlaySoundIcon from './PlaySoundIcon.vue'
 import { getDictsData, setDictsData, updateWordStatus } from '../utils/storage-utils'
 
+const props = defineProps({
+  initialWord: {
+    type: String,
+    default: ''
+  },
+  isPopup: {
+    type: Boolean,
+    default: false
+  }
+});
+
 const word = ref('')
 const meaning = ref('')
 const imageUrl = ref('')
@@ -82,17 +93,22 @@ let updateTimeout = null
 // 加载数据
 onMounted(async () => {
   try {
-    const dictsData = await getDictsData()
-    
-    word.value = dictsData.dicts_word || ''
-    meaning.value = dictsData.dicts_meaning || ''
-    status_check.value = dictsData.dicts_status_check || false
-    status_fav.value = dictsData.dicts_status_fav || false
-    
-    if (dictsData.dicts_image) {
-      imageUrl.value = dictsData.dicts_image
+    if (props.initialWord) {
+      word.value = props.initialWord;
+      await findWord(); // 加载该单词的信息
+    } else {
+      const dictsData = await getDictsData();
+      
+      word.value = dictsData.dicts_word || '';
+      meaning.value = dictsData.dicts_meaning || '';
+      status_check.value = dictsData.dicts_status_check || false;
+      status_fav.value = dictsData.dicts_status_fav || false;
+      
+      if (dictsData.dicts_image) {
+        imageUrl.value = dictsData.dicts_image;
+      }
     }
-
+    
     // 监控数据
     await storage.watch (
       'local:dicts_meaning',
@@ -121,8 +137,6 @@ onMounted(async () => {
         status_fav.value = newInstallDate
       }
     );
-
-
 
   } catch (error) {
     console.error('加载数据失败:', error)
@@ -204,14 +218,28 @@ const saveMeaning = async () => {
 }
 
 const testMeaning = async () => {
-    await setDictsData({ preference: "helloworld" })
+
     console.log('testMeaning', meaning.value)
-    const dictsData = await getDictsData()
-    console.log('dictsData', dictsData)
 
     chrome.storage.local.set({ asdhjk: "huhuh" }).then(() => {
         console.log("Value is set")
     })
+
+
+    chrome.runtime.sendMessage(
+      {
+        action: 'getFavoriteWords'
+      },
+      (response) => {
+        console.log('getFavoriteWords', response)
+        if (response && response.success) {
+        } else {
+          console.log('getFavoriteWords', response)
+        }
+      }
+    );
+
+
 }
 
 // 处理图片上传

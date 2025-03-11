@@ -94,6 +94,10 @@ export default defineBackground(() => {
 
         saveRequest.onsuccess = () => {
           resolve('单词保存成功');
+          // 如果是收藏状态变化，通知内容脚本
+          if (wordData.dicts_status_fav !== undefined) {
+            notifyFavoriteWordsChanged();
+          }
         };
 
         saveRequest.onerror = (event) => {
@@ -151,16 +155,23 @@ export default defineBackground(() => {
 
   // 获取所有收藏的单词
   const getFavoriteWords = async (): Promise<any[]> => {
+    console.log('getFavoriteWords 开始执行');
     await ensureDB();
 
     return new Promise((resolve, reject) => {
+      console.log('getFavoriteWords 开始查询');
       const transaction = db.transaction(['words'], 'readonly');
       const store = transaction.objectStore('words');
-      const index = store.index('by_status_fav');
-      const request = index.getAll(IDBKeyRange.only(true));
-
+      
+      // 不使用索引直接获取所有单词，然后在内存中过滤
+      const request = store.getAll();
+      
       request.onsuccess = () => {
-        resolve(request.result);
+        // 在内存中过滤出 dicts_status_fav 为 true 的记录
+        const allWords = request.result || [];
+        const favoriteWords = allWords.filter(word => word.dicts_status_fav === true);
+        console.log('获取到收藏单词数量:', favoriteWords.length);
+        resolve(favoriteWords);
       };
 
       request.onerror = (event) => {
@@ -239,11 +250,14 @@ export default defineBackground(() => {
     }
 
     if (request.action == 'getFavoriteWords') {
+      console.log('getFavoriteWords.request START')
       getFavoriteWords()
         .then(result => {
+          console.log('request.action getFavoriteWords.then', result)
           sendResponse({ success: true, data: result });
         })
         .catch(error => {
+          console.log('request.action getFavoriteWords.catch', error)
           sendResponse({ success: false, message: error });
         });
 
@@ -277,4 +291,16 @@ export default defineBackground(() => {
 
   // 初始化数据库
   openDB().catch(error => console.error('初始化数据库失败:', error));
+
+  // 在 updateWordStatus 函数中添加通知逻辑
+  const notifyFavoriteWordsChanged = () => {
+    chrome.tabs.query({}, (tabs) => {
+      tabs.forEach(tab => {
+        if (tab.id) {
+          chrome.tabs.sendMessage(tab.id, { action: 'favoriteWordsUpdated' })
+            .catch(err => console.log(`无法发送消息到标签页 ${tab.id}:`, err));
+        }
+      });
+    });
+  };
 });
