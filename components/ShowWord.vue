@@ -93,12 +93,17 @@ let updateTimeout = null
 // 加载数据
 onMounted(async () => {
   try {
-    if (props.initialWord) {
-      word.value = props.initialWord;
-      await findWord(); // 加载该单词的信息
-    } else {
+
+      if(props.initialWord){
+        console.log('initialWord', props.initialWord)
+        word.value = props.initialWord;
+        await findWord(); // 加载该单词的信息
+        const dictsData = await getDictsData();
+        console.log('dictsData', dictsData)
+
+      }
+
       const dictsData = await getDictsData();
-      
       word.value = dictsData.dicts_word || '';
       meaning.value = dictsData.dicts_meaning || '';
       status_check.value = dictsData.dicts_status_check || false;
@@ -107,7 +112,7 @@ onMounted(async () => {
       if (dictsData.dicts_image) {
         imageUrl.value = dictsData.dicts_image;
       }
-    }
+
     
     // 监控数据
     await storage.watch (
@@ -147,7 +152,7 @@ onMounted(async () => {
 const findWord = async () => {
   try {
 
-    await setDictsData({ dicts_word: word.value })
+    // await setDictsData({ dicts_word: word.value })
     getWordFromDB(word.value).then(async result => {
         console.log('getWordFromDB', result)
         const empty = {dicts_meaning: '', dicts_image: '', dicts_status_check: false, dicts_status_fav: false, dicts_count: 0, dicts_create_time: '', dicts_update_time: ''};

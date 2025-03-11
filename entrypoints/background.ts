@@ -113,14 +113,46 @@ export default defineBackground(() => {
     });
   };
 
-  // 获取单词
+  // 获取单词（忽略大小写）
   const getWord = async (word: string): Promise<any> => {
+    if (!word) return null;
     await ensureDB();
 
+    // 准备不同大小写形式的单词
+    const wordVariations = [
+      word,                    // 原始形式
+      word.toLowerCase(),      // 全小写
+      word.toUpperCase(),      // 全大写
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() // 首字母大写
+    ];
+    
+    // 去重
+    const uniqueVariations = [...new Set(wordVariations)];
+    
+    // 依次尝试查询每种形式
+    for (const variation of uniqueVariations) {
+      try {
+        const result = await queryWordExact(variation);
+        if (result) {
+          console.log(`找到单词 "${variation}"`);
+          return result;
+        }
+      } catch (error) {
+        console.log(`查询 "${variation}" 失败:`, error);
+        // 继续尝试下一个变体
+      }
+    }
+    
+    console.log(`未找到单词 "${word}" 的任何形式`);
+    return null;
+  };
+
+  // 精确查询单个单词（辅助函数）
+  const queryWordExact = (exactWord: string): Promise<any> => {
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['words'], 'readonly');
       const store = transaction.objectStore('words');
-      const request = store.get(word || '');
+      const request = store.get(exactWord);
 
       request.onsuccess = () => {
         resolve(request.result);

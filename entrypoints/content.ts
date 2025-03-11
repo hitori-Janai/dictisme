@@ -11,6 +11,10 @@ export default defineContentScript({
     let favoriteWords: string[] = [];
     // 当前显示的悬浮组件
     let popup: HTMLElement | null = null;
+    // 当前悬浮的单词元素
+    let currentHighlightedElement: HTMLElement | null = null;
+    // 悬浮延迟定时器
+    let hoverTimer: number | null = null;
     
     // 创建悬浮显示的容器
     function createPopup(word: string, position: { x: number, y: number }) {
@@ -61,6 +65,18 @@ export default defineContentScript({
       
       // 添加到页面
       document.body.appendChild(popup);
+      
+      // 添加鼠标事件，允许在弹窗内移动不关闭
+      popup.addEventListener('mouseenter', () => {
+        if (hoverTimer) {
+          clearTimeout(hoverTimer);
+          hoverTimer = null;
+        }
+      });
+      
+      popup.addEventListener('mouseleave', () => {
+        removePopupWithDelay();
+      });
     }
     
     // 移除弹窗
@@ -69,6 +85,18 @@ export default defineContentScript({
         document.body.removeChild(popup);
         popup = null;
       }
+    }
+    
+    // 延迟移除弹窗（提供更好的用户体验）
+    function removePopupWithDelay() {
+      if (hoverTimer) {
+        clearTimeout(hoverTimer);
+      }
+      
+      hoverTimer = window.setTimeout(() => {
+        removePopup();
+        currentHighlightedElement = null;
+      }, 300); // 300ms延迟，避免鼠标短暂离开就关闭
     }
     
     // 高亮页面上的单词
@@ -133,16 +161,26 @@ export default defineContentScript({
         }
       });
       
-      // 添加点击事件处理
-      document.addEventListener('click', event => {
-        const target = event.target as HTMLElement;
-        
-        // 点击高亮单词
-        if (target.classList.contains('wxt-highlighted-word')) {
-          event.preventDefault();
-          event.stopPropagation();
-          
+      // 为所有高亮单词添加鼠标悬浮事件
+      const highlightedWords = document.querySelectorAll('.wxt-highlighted-word');
+      highlightedWords.forEach(element => {
+        element.addEventListener('mouseenter', (event) => {
+          const target = event.target as HTMLElement;
           const word = target.dataset.word;
+          
+          // 清除之前的定时器
+          if (hoverTimer) {
+            clearTimeout(hoverTimer);
+            hoverTimer = null;
+          }
+          
+          // 如果悬浮在不同的单词上，先关闭之前的弹窗
+          if (currentHighlightedElement && currentHighlightedElement !== target) {
+            removePopup();
+          }
+          
+          currentHighlightedElement = target;
+          
           if (word) {
             const rect = target.getBoundingClientRect();
             createPopup(word, { 
@@ -150,10 +188,20 @@ export default defineContentScript({
               y: rect.bottom + 10 
             });
           }
-        }
-        // 点击其他区域关闭弹窗
-        else if (popup && !popup.contains(target)) {
+        });
+        
+        element.addEventListener('mouseleave', () => {
+          removePopupWithDelay();
+        });
+      });
+      
+      // 点击页面其他区域关闭弹窗
+      document.addEventListener('click', event => {
+        const target = event.target as HTMLElement;
+        if (popup && !popup.contains(target) && 
+            (!currentHighlightedElement || !currentHighlightedElement.contains(target))) {
           removePopup();
+          currentHighlightedElement = null;
         }
       });
     }
@@ -180,7 +228,7 @@ export default defineContentScript({
       try {
         // 获取收藏单词
         const words = await getFavoriteWordsFromDB();
-        console.log('获取收藏单词 words', words)
+        console.log('获取收藏单词 words', words);
         favoriteWords = words.map(item => item.dicts_word.toLowerCase());
         console.log(`Loaded ${favoriteWords.length} favorite words`);
         
