@@ -6,10 +6,6 @@ const props = defineProps({
 })
 
 
-onMounted(() => {
-  console.log('1111status', props.status)
-})
-
 </script>
 
 <template>

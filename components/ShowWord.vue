@@ -153,7 +153,7 @@ const findWord = async () => {
   try {
 
     // await setDictsData({ dicts_word: word.value })
-    getWordFromDB(word.value).then(async result => {
+    await getWordFromDB(word.value).then(async result => {
         console.log('getWordFromDB', result)
         const empty = {dicts_word: word.value, dicts_meaning: '', dicts_image: '', dicts_status_check: false, dicts_status_fav: false, dicts_count: 0, dicts_create_time: '', dicts_update_time: ''};
         await setDictsData(result == null ? empty : result)
