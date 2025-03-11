@@ -320,6 +320,30 @@ export default defineBackground(() => {
 
       return true;
     }
+
+    if (request.action === 'getAllWords') {
+      getAllWords()
+        .then(result => {
+          sendResponse({ success: true, data: result });
+        })
+        .catch(error => {
+          sendResponse({ success: false, message: error });
+        });
+
+      return true;
+    }
+
+    if (request.action === 'importWords') {
+      importWords(request.data)
+        .then(count => {
+          sendResponse({ success: true, count: count });
+        })
+        .catch(error => {
+          sendResponse({ success: false, message: error });
+        });
+
+      return true;
+    }
   });
 
   // 初始化数据库
@@ -332,6 +356,68 @@ export default defineBackground(() => {
         if (tab.id) {
           chrome.tabs.sendMessage(tab.id, { action: 'favoriteWordsUpdated' })
             .catch(err => console.log(`无法发送消息到标签页 ${tab.id}:`, err));
+        }
+      });
+    });
+  };
+
+  // 获取所有单词
+  const getAllWords = async (): Promise<any[]> => {
+    await ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['words'], 'readonly');
+      const store = transaction.objectStore('words');
+      const request = store.getAll();
+      
+      request.onsuccess = () => {
+        resolve(request.result || []);
+      };
+
+      request.onerror = (event) => {
+        console.error('获取所有单词失败:', event);
+        reject('获取所有单词失败');
+      };
+    });
+  };
+
+  // 导入单词数据
+  const importWords = async (wordsData: any[]): Promise<number> => {
+    if (!Array.isArray(wordsData) || wordsData.length === 0) {
+      return 0;
+    }
+    
+    await ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['words'], 'readwrite');
+      const store = transaction.objectStore('words');
+      let count = 0;
+      
+      // 处理事务完成
+      transaction.oncomplete = () => {
+        console.log(`成功导入 ${count} 个单词`);
+        // 通知内容脚本更新高亮
+        notifyFavoriteWordsChanged();
+        resolve(count);
+      };
+      
+      transaction.onerror = (event) => {
+        console.error('导入单词失败:', event);
+        reject('导入单词失败');
+      };
+      
+      // 逐个添加单词
+      wordsData.forEach(word => {
+        // 确保单词有必要的字段
+        if (word && word.dicts_word) {
+          // 统一转换为小写
+          word.dicts_word = word.dicts_word.toLowerCase();
+          
+          const request = store.put(word);
+          request.onsuccess = () => {
+            count++;
+          };
         }
       });
     });
