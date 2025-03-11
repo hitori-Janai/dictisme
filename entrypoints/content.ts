@@ -29,11 +29,14 @@ export default defineContentScript({
         top: ${position.y}px;
         left: ${position.x}px;
         z-index: 9999;
-        background: white;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         width: 350px;
-        padding: 10px;
+        padding: 1px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
       `;
       
       // 创建关闭按钮
@@ -47,9 +50,17 @@ export default defineContentScript({
         border: none;
         font-size: 20px;
         cursor: pointer;
+        color: rgba(0, 0, 0, 0.5);
+        transition: color 0.2s;
       `;
+      closeBtn.onmouseover = () => {
+        closeBtn.style.color = 'rgba(0, 0, 0, 0.8)';
+      };
+      closeBtn.onmouseout = () => {
+        closeBtn.style.color = 'rgba(0, 0, 0, 0.5)';
+      };
       closeBtn.onclick = removePopup;
-      popup.appendChild(closeBtn);
+      // popup.appendChild(closeBtn);
       
       // 创建Vue应用挂载点
       const mountPoint = document.createElement('div');

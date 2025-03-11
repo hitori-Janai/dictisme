@@ -39,16 +39,16 @@
         @input="debounceUpdate"
       ></textarea>
       <!-- <button @click="saveMeaning" class="save-btn">保存</button> -->
-      <button @click="testMeaning" class="save-btn">testmean</button>
+      <!-- <button @click="testMeaning" class="save-btn">testmean</button> -->
     </div>
     
     <div class="image-section">
-      <h3>图片</h3>
+      <!-- <h3>图片</h3> -->
       <div class="image-preview">
         <img v-if="imageUrl" :src="imageUrl" alt="词义图片" />
         <div v-else class="no-image">暂无图片</div>
       </div>
-      <div class="image-actions">
+      <div v-if="!isPopup" class="image-actions">
         <label for="image-upload" class="upload-btn">
           上传图片
           <input 
@@ -155,7 +155,7 @@ const findWord = async () => {
     // await setDictsData({ dicts_word: word.value })
     getWordFromDB(word.value).then(async result => {
         console.log('getWordFromDB', result)
-        const empty = {dicts_meaning: '', dicts_image: '', dicts_status_check: false, dicts_status_fav: false, dicts_count: 0, dicts_create_time: '', dicts_update_time: ''};
+        const empty = {dicts_word: word.value, dicts_meaning: '', dicts_image: '', dicts_status_check: false, dicts_status_fav: false, dicts_count: 0, dicts_create_time: '', dicts_update_time: ''};
         await setDictsData(result == null ? empty : result)
     }).catch(error => {
         console.error('getWordFromDB', error)
@@ -283,17 +283,27 @@ const removeImage = async () => {
 .show-word-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 16px;
+  /* gap: 20px; */
+  /* padding: 16px; */
   max-width: 600px;
-  margin: 0 auto;
+  margin: 0 0;
 }
 
-.meaning-section, .image-section {
+.meaning-section{
   border: 1px solid #ddd;
   border-radius: 8px;
-  padding: 16px;
+  /* padding: 2px; */
   background-color: #f9f9f9;
+  margin: 0 0;
+}
+
+.image-section {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  /* padding: 2px; */
+  background-color: #00000000;
+  margin: 0;
+  padding: 0;
 }
 
 h3 {
@@ -364,24 +374,25 @@ h3 {
 .meaning-textarea {
   width: 100%;
   min-height: 120px;
-  padding: 8px;
+  /* padding: 8px; */
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 14px;
   resize: vertical;
-  margin-bottom: 10px;
+  /* margin-bottom: 10px; */
 }
 
 .image-preview {
   width: 100%;
   height: 200px;
-  border: 1px dashed #ccc;
-  border-radius: 4px;
+  border: 0px dashed #ccc;
+  border-radius: 0px;
   display: flex;
-  align-items: center;
+  align-items: start;
   justify-content: center;
   overflow: hidden;
-  margin-bottom: 10px;
+  /* margin-bottom: 10px; */
+  background-color: rgba(255, 255, 255, 0);
 }
 
 .image-preview img {
@@ -400,13 +411,13 @@ h3 {
   gap: 10px;
 }
 
-.upload-btn, .save-btn, .remove-btn {
+.upload-btn, .remove-btn {
   padding: 8px 16px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
-  display: inline-block;
+  transition: background-color 0.2s;
 }
 
 .upload-btn {
@@ -414,14 +425,17 @@ h3 {
   color: white;
 }
 
-.save-btn {
-  background-color: #2196F3;
-  color: white;
+.upload-btn:hover {
+  background-color: #45a049;
 }
 
 .remove-btn {
   background-color: #f44336;
   color: white;
+}
+
+.remove-btn:hover {
+  background-color: #d32f2f;
 }
 
 .hidden {
