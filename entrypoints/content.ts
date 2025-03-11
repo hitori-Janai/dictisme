@@ -211,13 +211,18 @@ export default defineContentScript({
       const style = document.createElement('style');
       style.textContent = `
         .wxt-highlighted-word {
-          background-color: #ffeb3b;
-          border-radius: 2px;
-          padding: 0 2px;
+          color: #e91e63;
+          font-weight: 500;
+          text-decoration: underline;
+          text-decoration-color: #e91e63;
+          text-decoration-thickness: 1px;
+          text-underline-offset: 2px;
           cursor: pointer;
+          transition: all 0.2s ease;
         }
         .wxt-highlighted-word:hover {
-          background-color: #ffc107;
+          color: #c2185b;
+          text-decoration-thickness: 2px;
         }
       `;
       document.head.appendChild(style);

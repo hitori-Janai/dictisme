@@ -58,6 +58,7 @@ export default defineBackground(() => {
       const transaction = db.transaction(['words'], 'readwrite');
       const store = transaction.objectStore('words');
 
+      wordData.dicts_word = wordData.dicts_word?.toLowerCase()
       // 先检查单词是否存在
       const getRequest = store.get(wordData.dicts_word || '');
 
