@@ -44,9 +44,17 @@
     
     <div class="image-section">
       <!-- <h3>图片</h3> -->
-      <div class="image-preview">
+      <div 
+        class="image-preview" 
+        @dragover.prevent="onDragOver"
+        @dragleave.prevent="onDragLeave"
+        @drop.prevent="onDrop"
+        :class="{ 'drag-over': isDragging }"
+      >
         <img v-if="imageUrl" :src="imageUrl" alt="词义图片" />
-        <div v-else class="no-image">暂无图片</div>
+        <div v-else class="no-image">
+          <span>拖放图片到此处或点击上传</span>
+        </div>
       </div>
       <div v-if="!isPopup" class="image-actions">
         <label for="image-upload" class="upload-btn">
@@ -89,6 +97,7 @@ const imageUrl = ref('')
 const status_check = ref(false)
 const status_fav = ref(false)
 let updateTimeout = null
+const isDragging = ref(false)
 
 // 加载数据
 onMounted(async () => {
@@ -277,6 +286,52 @@ const removeImage = async () => {
     console.error('删除图片失败:', error)
   }
 }
+
+// 拖拽相关函数
+const onDragOver = (event) => {
+  isDragging.value = true;
+  // 确保只接受图片文件
+  if (event.dataTransfer.items && event.dataTransfer.items.length > 0) {
+    const item = event.dataTransfer.items[0];
+    if (item.kind === 'file' && item.type.startsWith('image/')) {
+      // 允许放置
+      event.dataTransfer.dropEffect = 'copy';
+    } else {
+      // 不允许放置
+      event.dataTransfer.dropEffect = 'none';
+    }
+  }
+};
+
+const onDragLeave = () => {
+  isDragging.value = false;
+};
+
+const onDrop = (event) => {
+  isDragging.value = false;
+  
+  // 获取拖放的文件
+  const files = event.dataTransfer.files;
+  if (files.length > 0) {
+    const file = files[0];
+    
+    // 检查是否为图片
+    if (file.type.startsWith('image/')) {
+      // 读取并处理图片
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageData = e.target.result;
+        imageUrl.value = imageData;
+        
+        // 保存图片
+        setDictsData({ dicts_image: imageData })
+          .then(() => console.log('图片已保存'))
+          .catch(error => console.error('保存图片失败:', error));
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+};
 </script>
 
 <style scoped>
@@ -393,6 +448,13 @@ h3 {
   overflow: hidden;
   /* margin-bottom: 10px; */
   background-color: rgba(255, 255, 255, 0);
+  transition: all 0.3s ease;
+}
+
+.image-preview.drag-over {
+  border-color: #4CAF50;
+  background-color: rgba(76, 175, 80, 0.1);
+  transform: scale(1.02);
 }
 
 .image-preview img {
@@ -404,6 +466,8 @@ h3 {
 .no-image {
   color: #999;
   font-size: 14px;
+  text-align: center;
+  padding: 20px;
 }
 
 .image-actions {

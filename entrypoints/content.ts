@@ -29,14 +29,14 @@ export default defineContentScript({
         top: ${position.y}px;
         left: ${position.x}px;
         z-index: 9999;
-        background: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0);
+        backdrop-filter: blur(1px);
         -webkit-backdrop-filter: blur(10px);
-        border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        border-radius: 1px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0);
         width: 350px;
-        padding: 1px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 0px;
+        border: 1px solid rgba(255, 255, 255, 0);
       `;
       
       // 创建关闭按钮
@@ -107,7 +107,7 @@ export default defineContentScript({
       hoverTimer = window.setTimeout(() => {
         removePopup();
         currentHighlightedElement = null;
-      }, 300); // 300ms延迟，避免鼠标短暂离开就关闭
+      }, 300000); // 300ms延迟，避免鼠标短暂离开就关闭
     }
     
     // 高亮页面上的单词
