@@ -15,6 +15,8 @@ export default defineContentScript({
     let currentHighlightedElement: HTMLElement | null = null;
     // 悬浮延迟定时器
     let hoverTimer: number | null = null;
+    // 初始化状态
+    let isInitialized = false;
     
     // 创建悬浮显示的容器
     function createPopup(word: string, position: { x: number, y: number }) {
@@ -112,6 +114,8 @@ export default defineContentScript({
     
     // 高亮页面上的单词
     function highlightWords() {
+      console.log('开始高亮单词，收藏单词数量:', favoriteWords.length);
+      
       // 如果没有收藏单词，不执行操作
       if (favoriteWords.length === 0) return;
       
@@ -147,6 +151,8 @@ export default defineContentScript({
         textNodes.push(currentNode);
       }
       
+      console.log(`找到 ${textNodes.length} 个文本节点进行处理`);
+      
       // 处理文本节点
       textNodes.forEach(node => {
         let text = node.textContent || '';
@@ -174,6 +180,8 @@ export default defineContentScript({
       
       // 为所有高亮单词添加鼠标悬浮事件
       const highlightedWords = document.querySelectorAll('.wxt-highlighted-word');
+      console.log(`成功高亮 ${highlightedWords.length} 个单词`);
+      
       highlightedWords.forEach(element => {
         element.addEventListener('mouseenter', (event) => {
           const target = event.target as HTMLElement;
@@ -241,19 +249,23 @@ export default defineContentScript({
     
     // 初始化
     async function initialize() {
+      if (isInitialized) return;
+      
       try {
+        console.log('开始初始化词典功能');
         // 获取收藏单词
         const words = await getFavoriteWordsFromDB();
-        console.log('获取收藏单词 words', words);
+        console.log('获取收藏单词成功:', words);
         favoriteWords = words.map(item => item.dicts_word.toLowerCase());
-        console.log(`Loaded ${favoriteWords.length} favorite words`);
+        console.log(`加载了 ${favoriteWords.length} 个收藏单词`);
         
         if (favoriteWords.length > 0) {
           addStyles();
           highlightWords();
+          isInitialized = true;
         }
       } catch (error) {
-        console.error('Failed to initialize dictionary:', error);
+        console.error('初始化词典功能失败:', error);
       }
     }
     
@@ -261,13 +273,66 @@ export default defineContentScript({
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === 'favoriteWordsUpdated') {
         // 重新加载并高亮
+        console.log('收到收藏单词更新通知，重新初始化');
+        isInitialized = false;
         initialize();
         sendResponse({ success: true });
       }
       return true;
     });
     
-    // 启动
-    initialize();
+    // 使用多种方法确保在页面加载完成后初始化
+    
+    // 方法1: 使用 window.onload
+ /*   if (document.readyState === 'complete') {
+      console.log('页面已加载完成，立即初始化');
+      initialize();
+    } else {
+      console.log('页面尚未加载完成，等待 load 事件');
+      window.addEventListener('load', () => {
+        console.log('页面加载完成事件触发，开始初始化');
+        initialize();
+      });
+    }*/
+    
+    // 方法2: 使用延迟初始化，确保DOM已完全构建
+    setTimeout(() => {
+      if (!isInitialized) {
+        console.log('使用延迟初始化');
+        initialize();
+      }
+    }, 1000*5);
+    
+    // 方法3: 使用 MutationObserver 监听 DOM 变化
+ /*   const bodyObserver = new MutationObserver((mutations) => {
+      if (!isInitialized && document.body && document.body.childNodes.length > 0) {
+        console.log('检测到 DOM 已构建，开始初始化');
+        bodyObserver.disconnect();
+        initialize();
+      }
+    });
+    
+    // 如果 body 已存在，开始观察
+    if (document.body) {
+      bodyObserver.observe(document.body, { childList: true, subtree: true });
+      
+      // 如果 body 已有内容，立即初始化
+      if (document.body.childNodes.length > 0) {
+        console.log('body 已有内容，立即初始化');
+        bodyObserver.disconnect();
+        initialize();
+      }
+    } else {
+      // 等待 body 元素创建
+      const docObserver = new MutationObserver(() => {
+        if (document.body) {
+          console.log('body 元素已创建');
+          docObserver.disconnect();
+          bodyObserver.observe(document.body, { childList: true, subtree: true });
+        }
+      });
+      
+      docObserver.observe(document.documentElement, { childList: true });
+    }*/
   }
 });
