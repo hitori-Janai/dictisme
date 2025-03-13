@@ -107,7 +107,7 @@ export default defineContentScript({
       hoverTimer = window.setTimeout(() => {
         removePopup();
         currentHighlightedElement = null;
-      }, 300000); // 300ms延迟，避免鼠标短暂离开就关闭
+      }, 300); // 300ms延迟，避免鼠标短暂离开就关闭
     }
     
     // 高亮页面上的单词
