@@ -145,7 +145,7 @@ export default defineContentScript({
       );
       
       // 收集需要处理的节点
-      const textNodes = [];
+      const textNodes = []; // 页面文本拆成独立段落，不互相包含
       let currentNode;
       while (currentNode = walker.nextNode()) {
         textNodes.push(currentNode);
@@ -162,7 +162,7 @@ export default defineContentScript({
         favoriteWords.forEach(word => {
           // 使用单词边界确保匹配完整单词
           const regex = new RegExp(`\\b${word}\\b`, 'gi');
-          if (regex.test(text)) {
+          if (regex.test(text) && !node.parentElement?.classList.contains('wxt-highlighted-word')) {
             changed = true;
             // 替换文本，添加高亮标记
             text = text.replace(regex, match => 
